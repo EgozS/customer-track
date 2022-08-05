@@ -17,6 +17,10 @@ app.use(session({
 }));
 
 const dbinfo = require('./dbinfo.json');
+const confige = './config.json';
+const config = require('./config.json');
+
+let firstTime = config.firstTime;
 
 //setup mysql
 const db = mysql.createConnection({
@@ -33,9 +37,17 @@ app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
 
-session.firstTime = true;
+function setFirstTime() {
+    config.firstTime = false;
+    fs.writeFile(confige, JSON.stringify(config, null, 2), function writeJSON(err){
+        console.log("err");
+    })
+}
+
+session.firstTime = config.firstTime;
 
 app.get('/', (req, res) => {
+    console.log(session.firstTime);
     if (session.firstTime) {
     res.redirect('/setup');
     }
@@ -46,7 +58,12 @@ app.get('/', (req, res) => {
 );
 
 app.get('/setup', (req, res) => {
-    res.render('setup');
+    if(session.firstTime) {
+        res.render('setup');
+    }
+    else {
+        res.redirect('/');
+    }
 });
 
 app.post('/setup/database', (req, res) => {
@@ -72,12 +89,14 @@ db.connect((err) => {
 db.query(`CREATE TABLE IF NOT EXISTS people (firstname VARCHAR(255), lastname VARCHAR(255), email VARCHAR(255), phone INT(11), birthday DATE, service VARCHAR(255), id INT(16), recent_service VARCHAR(255), date_joined DATE, notes VARCHAR(255))`, (err, result) => {
         if (err) {
             console.log(err);
+            exit()
         }
         else {
             console.log('Table created');
         }
     });
-
+    setFirstTime();
+    res.redirect('/');
 
 });
 
